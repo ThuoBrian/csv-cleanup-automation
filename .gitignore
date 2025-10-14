@@ -1,4 +1,5 @@
 # Rust specific ignores
+/data/
 /target/
 debug/
 **/*.rs.bk
