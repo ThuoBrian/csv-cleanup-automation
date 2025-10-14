@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::fs::File;
 use std::path::Path;
 
-/// CSV file paths.
+// CSV file paths under the ./data folder.
 pub const INPUT_CSV_FILE: &str = "./data/{raw-csv-doc}.csv";
 pub const OUTPUT_CSV_FILE: &str = "./data/analyzed_output.csv";
 
