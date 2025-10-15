@@ -11,7 +11,7 @@ pub const COL_BW_COPIER: &str = "Black & WhiteTotal(Copier/Document Server)";
 pub const COL_BW_LARGE: &str = "Black & White(Large size)(Copier/Document Server)";
 
 // CSV file paths under the ./data folder.
-// How can we make this more dynamic to handle multiple files? [glob pattern matching?]
+//[to-d0] How can we make this more dynamic to handle multiple files? [glob pattern matching?]
 pub const INPUT_CSV_DIR: &str = "./data/IPAK_NRB_PROGRAMS_.csv";
 pub const OUTPUT_CSV_FILE: &str = "./data/analyzed_output.csv";
 
