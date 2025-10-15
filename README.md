@@ -1,4 +1,4 @@
-# csv-cleanup-automation# CSV Cleanup Automation
+# CSV Cleanup Automation
 
 ## Overview
 
