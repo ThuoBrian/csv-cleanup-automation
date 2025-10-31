@@ -3,7 +3,6 @@ use std::fs::{File, create_dir_all};
 use std::path::Path;
 use std::{error::Error, fmt};
 
-/// CSV-related error type for the crate (no external deps).
 #[derive(Debug)]
 pub enum CsvError {
     Io(std::io::Error),
