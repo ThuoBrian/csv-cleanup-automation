@@ -1,75 +1,93 @@
-use polars::prelude::DataFrame;
 use polars::prelude::*;
-use std::fs::File;
+use std::fs::{File, create_dir_all};
 use std::path::Path;
+use std::{error::Error, fmt};
 
-//csv column names
+/// CSV-related error type for the crate (no external deps).
+#[derive(Debug)]
+pub enum CsvError {
+    Io(std::io::Error),
+    Polars(PolarsError),
+    NotFound(String),
+}
+
+impl fmt::Display for CsvError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CsvError::Io(e) => write!(f, "IO error: {}", e),
+            CsvError::Polars(e) => write!(f, "Polars error: {}", e),
+            CsvError::NotFound(s) => write!(f, "Not found: {}", s),
+        }
+    }
+}
+impl Error for CsvError {}
+
+impl From<std::io::Error> for CsvError {
+    fn from(e: std::io::Error) -> Self {
+        CsvError::Io(e)
+    }
+}
+impl From<PolarsError> for CsvError {
+    fn from(e: PolarsError) -> Self {
+        CsvError::Polars(e)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, CsvError>;
+
+// CSV column names
 pub const COL_NAME: &str = "Name";
 pub const COL_TOTAL_PRINTS: &str = "Total Prints";
 pub const COL_BW_PRINTER: &str = "Black & WhiteTotal(Printer)";
 pub const COL_BW_COPIER: &str = "Black & WhiteTotal(Copier/Document Server)";
 pub const COL_BW_LARGE: &str = "Black & White(Large size)(Copier/Document Server)";
 
-// CSV file paths under the ./data folder.
-pub const INPUT_CSV_DIR: &str = "./data/IPAK_NRB_PROGRAMS_.csv";
+// Defaults (library users should pass paths when possible)
+pub const INPUT_CSV_FILE: &str = "./data/IPAK_NRB_PROGRAMS_.csv";
 pub const OUTPUT_CSV_FILE: &str = "./data/analyzed_output.csv";
 
-pub fn process_csv_file(input_path: &Path) -> Result<DataFrame, PolarsError> {
-    // Check if the input file exists
+pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
     if !input_path.exists() {
-        return Err(PolarsError::ComputeError(
-            format!("Input file does not exist: {:?}", input_path).into(),
-        ));
+        return Err(CsvError::NotFound(format!("{:?}", input_path)));
     }
-    // Open the input file
-    let input_file = File::open(input_path).map_err(|error| {
-        PolarsError::ComputeError(format!("Failed to open '{:?}': {}", input_path, error).into())
-    })?;
 
-    // Read the CSV file into a DataFrame
-    let dataframe = CsvReader::new(input_file)
+    let path_str = input_path
+        .to_str()
+        .ok_or_else(|| CsvError::NotFound("invalid input path".to_string()))?;
+
+    // Build lazy pipeline directly from CSV file
+    let lazy = LazyCsvReader::new(path_str)
         .has_header(true)
+        .with_try_parse_dates(false) // optional: tweak depending on data
         .finish()
-        .map_err(|error| {
-            PolarsError::ComputeError(
-                format!("Failed to read '{:?}': {}", input_path, error).into(),
-            )
-        })?;
-
-    // Select specific columns
-    let selected_dataframe = dataframe.select([
-        COL_NAME,
-        COL_TOTAL_PRINTS,
-        COL_BW_PRINTER,
-        COL_BW_COPIER,
-        COL_BW_LARGE,
-    ])?;
-
-    // Clean the "Name" column by removing square brackets REGEX (r#"[\[\]]"#))
-    let cleaned_dataframe = selected_dataframe
-        .lazy()
+        .map_err(CsvError::Polars)?
+        .select(&[
+            col(COL_NAME),
+            col(COL_TOTAL_PRINTS),
+            col(COL_BW_PRINTER),
+            col(COL_BW_COPIER),
+            col(COL_BW_LARGE),
+        ])
+        // replace_all regex flag = true
         .with_column(
             col(COL_NAME)
                 .str()
-                .replace_all(lit(r#"[\[\]]"#), lit(""), false)
+                .replace_all(lit(r#"[\[\]]"#), lit(""), true)
                 .alias(COL_NAME),
-        )
-        .collect()?;
+        );
 
-    // Create the output file
-    let mut output_file = File::create(OUTPUT_CSV_FILE).map_err(|error| {
-        PolarsError::ComputeError(
-            format!("Failed to create '{}': {}", OUTPUT_CSV_FILE, error).into(),
-        )
-    })?;
+    let mut df = lazy.collect().map_err(CsvError::Polars)?;
 
-    // Write the cleaned DataFrame to the output file
-    let mut cleaned_dataframe = cleaned_dataframe;
-    CsvWriter::new(&mut output_file)
+    // Ensure output directory exists
+    if let Some(parent) = Path::new(OUTPUT_CSV_FILE).parent() {
+        create_dir_all(parent)?;
+    }
+
+    let mut out = File::create(OUTPUT_CSV_FILE)?;
+    CsvWriter::new(&mut out)
         .has_header(true)
-        .finish(&mut cleaned_dataframe)?;
+        .finish(&mut df)
+        .map_err(CsvError::Polars)?;
 
-    println!("\n Output file created at: {}", OUTPUT_CSV_FILE);
-
-    Ok(cleaned_dataframe)
+    Ok(df)
 }
