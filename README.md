@@ -1,57 +1,53 @@
 # CSV Cleanup Automation
 
-## Overview
+A small Rust library/CLI that reads CSV files, cleans specific columns, and writes cleaned CSV output. The code uses Polars' lazy API to build a single pipeline and execute it once for better performance.
 
-CSV Cleanup Automation is a Rust-based project designed to automate the process of cleaning and analyzing CSV files. This tool helps streamline data processing tasks by providing a simple interface for reading, cleaning, and writing CSV data.
+## How it works (high level)
 
-## Features
+- Entry points:
+  - Library: `process_csv_file(input: &Path) -> Result<DataFrame>` (and `process_csv_file_with_options` for custom output/schema).
+  - CLI (optional `main.rs`) parses input/output paths and an optional JSON schema.
+- Reading:
+  - Uses `LazyCsvReader` to avoid eager materialization. The pipeline selects only the required columns up front.
+- Cleaning:
+  - Applies string operations (example: `replace_all` on the `Name` column with regex `[\[\]]` to remove square brackets) inside the lazy plan.
+- Casting (optional):
+  - If a schema map is provided (column -> `DataType`), casts are added to the lazy plan before `collect()`.
+- Writing:
+  - After `lazy.collect()` returns a `DataFrame`, the result is written to the specified output CSV (creates parent directory if needed).
+- Errors:
+  - The crate defines a `CsvError` enum that wraps `std::io::Error` and `PolarsError`, returned via a `Result<T, CsvError>` alias.
 
-- **Dynamic CSV Processing**: Automatically processes multiple CSV files from a specified directory.
-- **Data Cleaning**: Cleans specific columns by removing unwanted characters and formatting issues.
-- **Output Generation**: Generates cleaned CSV files for further analysis.
+## CLI usage
 
-## Getting Started
-
-### Prerequisites
-
-- Rust (1.50 or later)
-- Cargo (Rust package manager)
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/csv-cleanup-automation.git
-   cd csv-cleanup-automation
-   ```
-
-2. Build the project:
-   ```bash
-   cargo build
-   ```
-
-### Usage
-
-To run the CSV cleanup automation, use the following command:
+Build and run (release recommended):
 
 ```bash
-cargo run -- <input_csv_directory>
+cargo build --release
+cargo run --release -- <input.csv> -o ./data/analyzed_output.csv --schema schema.json
 ```
 
-Replace `<input_csv_directory>` with the path to the directory containing your CSV files.
+- `input.csv` — path to the CSV to process.
+- `-o/--output` — optional output path (defaults to `./data/analyzed_output.csv`).
+- `--schema` — optional JSON file mapping column names to types (e.g. `{"Name":"utf8","Total Prints":"u64"}`).
 
-### Example
+## Example schema JSON
 
-```bash
-cargo run -- ./data
+```json
+{
+  "Name": "utf8",
+  "Total Prints": "u64",
+  "Black & WhiteTotal(Printer)": "u64"
+}
 ```
 
-This command will process all CSV files in the `./data` directory and generate cleaned output files.
+## Notes and tips
 
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+- Use release builds for realistic performance (`cargo run --release`).
+- For very large files, consider streaming/chunked processing instead of collecting the entire DataFrame.
+- Prefer passing explicit output paths (library API) instead of modifying constants.
+- Ensure the input path is correct; library functions return `CsvError::NotFound` if missing.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+MIT
