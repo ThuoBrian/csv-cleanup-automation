@@ -58,7 +58,7 @@ pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
     // Build lazy pipeline directly from CSV file
     let lazy = LazyCsvReader::new(path_str)
         .has_header(true)
-        .with_try_parse_dates(false) // optional: tweak depending on data
+        .with_try_parse_dates(false)
         .finish()
         .map_err(CsvError::Polars)?
         .select(&[
@@ -68,7 +68,6 @@ pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
             col(COL_BW_COPIER),
             col(COL_BW_LARGE),
         ])
-        // replace_all regex flag = true
         .with_column(
             col(COL_NAME)
                 .str()
