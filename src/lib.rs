@@ -75,7 +75,7 @@ pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
 
     let mut df = lazy.collect().map_err(CsvError::Polars)?;
 
-    // Ensure output directory exists
+    // Ensure output directory exists ./data/
     if let Some(parent) = Path::new(OUTPUT_CSV_FILE).parent() {
         create_dir_all(parent)?;
     }
