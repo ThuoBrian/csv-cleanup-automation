@@ -3,6 +3,7 @@ use std::fs::{File, create_dir_all};
 use std::path::Path;
 use std::{error::Error, fmt};
 
+//Error type for CSV processing
 #[derive(Debug)]
 pub enum CsvError {
     Io(std::io::Error),
@@ -34,7 +35,7 @@ impl From<PolarsError> for CsvError {
 
 pub type Result<T> = std::result::Result<T, CsvError>;
 
-// CSV column names
+// CSV column names [The columns I focus on about]
 pub const COL_NAME: &str = "Name";
 pub const COL_TOTAL_PRINTS: &str = "Total Prints";
 pub const COL_BW_PRINTER: &str = "Black & WhiteTotal(Printer)";
@@ -42,14 +43,12 @@ pub const COL_BW_COPIER: &str = "Black & WhiteTotal(Copier/Document Server)";
 pub const COL_BW_LARGE: &str = "Black & White(Large size)(Copier/Document Server)";
 
 // Defaults (library users should pass paths when possible)
+//To-do: Can Clap be used to pass paths from command line arguments?
+
 pub const INPUT_CSV_FILE: &str = "./data/IPAK_NRB_PROGRAMS_.csv";
-pub const OUTPUT_CSV_FILE: &str = "./data/analyzed_output.csv";
+pub const OUTPUT_CSV_FILE: &str = "./data/test_analyzed_output.csv";
 
 pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
-    if !input_path.exists() {
-        return Err(CsvError::NotFound(format!("{:?}", input_path)));
-    }
-
     let path_str = input_path
         .to_str()
         .ok_or_else(|| CsvError::NotFound("invalid input path".to_string()))?;
