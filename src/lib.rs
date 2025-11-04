@@ -69,7 +69,9 @@ pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
         .with_column(
             col(COL_NAME)
                 .str()
-                .replace_all(lit(r#"[\[\]]"#), lit(""), true)
+                .replace(lit("["), lit(""), false)
+                .str()
+                .replace(lit("]"), lit(""), false)
                 .alias(COL_NAME),
         );
 
