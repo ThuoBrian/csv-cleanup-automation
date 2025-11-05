@@ -36,6 +36,7 @@ impl From<PolarsError> for CsvError {
 pub type Result<T> = std::result::Result<T, CsvError>;
 
 // CSV column names [The columns I focus on about]
+pub const COL_USER: &str = "User";
 pub const COL_NAME: &str = "Name";
 pub const COL_TOTAL_PRINTS: &str = "Total Prints";
 pub const COL_BW_PRINTER: &str = "Black & WhiteTotal(Printer)";
@@ -49,16 +50,18 @@ pub const INPUT_CSV_FILE: &str = "./data/IPAK_NRB_PROGRAMS_.csv";
 pub const OUTPUT_CSV_FILE: &str = "./data/test_analyzed_output.csv";
 
 pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
-    // Convert path to string, handling non-UTF8 paths gracefully
-    let path_str = input_path.to_string_lossy();
+    let path_str = input_path
+        .to_str()
+        .ok_or_else(|| CsvError::NotFound("invalid input path".to_string()))?;
 
     // Build lazy pipeline directly from CSV file
-    let lazy = LazyCsvReader::new(path_str.as_ref())
+    let lazy = LazyCsvReader::new(path_str)
         .has_header(true)
         .with_try_parse_dates(false)
         .finish()
         .map_err(CsvError::Polars)?
         .select(&[
+            col(COL_USER),
             col(COL_NAME),
             col(COL_TOTAL_PRINTS),
             col(COL_BW_PRINTER),
@@ -68,7 +71,7 @@ pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
         .with_column(
             col(COL_NAME)
                 .str()
-                .replace_all(lit(r#"[\[\]]"#), lit(""), true)
+                .replace_all(lit(r#"[\[\]]"#), lit(""), false)
                 .alias(COL_NAME),
         );
 
