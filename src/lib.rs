@@ -49,12 +49,11 @@ pub const INPUT_CSV_FILE: &str = "./data/IPAK_NRB_PROGRAMS_.csv";
 pub const OUTPUT_CSV_FILE: &str = "./data/test_analyzed_output.csv";
 
 pub fn process_csv_file(input_path: &Path) -> Result<DataFrame> {
-    let path_str = input_path
-        .to_str()
-        .ok_or_else(|| CsvError::NotFound("invalid input path".to_string()))?;
+    // Convert path to string, handling non-UTF8 paths gracefully
+    let path_str = input_path.to_string_lossy();
 
     // Build lazy pipeline directly from CSV file
-    let lazy = LazyCsvReader::new(path_str)
+    let lazy = LazyCsvReader::new(path_str.as_ref())
         .has_header(true)
         .with_try_parse_dates(false)
         .finish()
